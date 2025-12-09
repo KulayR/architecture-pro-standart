@@ -1,0 +1,18 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C4 Context - Интеграция ставок с КЦ
+
+System_Boundary(bank, "Банк Стандарт") {
+    System(dep_service, "Deposit Service", "Мастер-система ставок")
+    System(internal_cc, "Система Внутреннего КЦ", "CRM операторов")
+    System(sftp, "SFTP Server", "Файловый шлюз")
+}
+
+System_Ext(partner_cc, "Партнерский КЦ", "Внешний аутсорс")
+
+Rel(internal_cc, dep_service, "Запрос ставок (REST API)", "HTTPS")
+Rel(dep_service, sftp, "Upload файла ставок (Push)", "SSH/SFTP")
+Rel(partner_cc, sftp, "Download файла ставок (Pull)", "SSH/SFTP")
+
+@enduml
