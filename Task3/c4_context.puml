@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C4 Context - Открытие депозитов (MVP)
+
+Person(client_new, "Новый Клиент", "Потенциальный клиент с сайта")
+Person(client_exist, "Действующий Клиент", "Клиент с доступом в ИБ")
+
+Person_Ext(staff_front, "Сотрудник Фронт-офиса", "Идентифицирует личность и оформляет документы")
+Person_Ext(staff_back, "Сотрудник Бэк-офиса", "Подтверждает операции и управляет ставками")
+Person_Ext(call_center, "Оператор КЦ", "Обрабатывает входящие лиды")
+
+System_Boundary(bank_boundary, "Банк Стандарт") {
+    System(website, "Сайт банка", "Витрина и сбор заявок")
+    System(internet_bank, "Интернет-банк", "Канал для действующих клиентов")
+    System(deposit_system, "Система управления депозитами", "Microservice: Ставки и Заявки")
+    System(abs, "АБС (Ядро)", "Учет клиентов, счетов и договоров")
+    System(crm, "Система Кол-центра", "Работа с лидами")
+}
+
+System_Ext(sms_gate, "СМС-шлюз", "Коды и уведомления")
+
+' Путь Нового клиента
+Rel(client_new, website, "1. Заявка на консультацию")
+Rel(website, crm, "2. Передача лида")
+Rel(call_center, crm, "3. Обработка звонка")
+Rel(call_center, client_new, "4. Приглашение в офис")
+Rel(client_new, staff_front, "5. Визит с паспортом")
+Rel(staff_front, abs, "6. Идентификация и регистрация")
+
+' Путь Действующего клиента (или нового после визита)
+Rel(client_exist, internet_bank, "7. Оформление депозита")
+Rel(internet_bank, deposit_system, "8. Отправка заявки")
+Rel(internet_bank, sms_gate, "9. СМС код")
+
+' Внутренняя кухня
+Rel(deposit_system, abs, "Асинхронная передача (Kafka)")
+Rel(staff_back, abs, "Подтверждение заявки (MVP)")
+Rel(abs, sms_gate, "Уведомление об открытии")
+
+@enduml

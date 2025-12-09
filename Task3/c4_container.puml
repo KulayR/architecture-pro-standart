@@ -1,0 +1,47 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C4 Container - Открытие депозитов (MVP)
+
+Person(new_client, "Новый Клиент")
+Person(auth_client, "Клиент (Авторизован)")
+Person(front_staff, "Сотрудник Фронт-офиса")
+
+System_Boundary(digital, "Цифровые каналы") {
+    Container(site, "Сайт (Landing)", "React/PHP", "Сбор контактов")
+
+    Container_Boundary(ib_scope, "Интернет-банк") {
+        Container(ib_web, "ИБ Web UI", "ASP.NET", "Личный кабинет")
+        Container(ib_backend, "ИБ Backend", ".NET", "Логика ДБО")
+    }
+
+    Container(dep_service, "Deposit Service", "Java Spring Boot", "Каталог ставок и API заявок")
+    Container(kafka, "Kafka Broker", "Apache Kafka", "Шина событий")
+}
+
+System_Boundary(ops, "Операционный контур") {
+    Container(crm, "CRM Кол-центра", "Vendor Solution", "Очередь обзвона")
+    Container(abs_app, "АБС Клиент", "Delphi", "АРМ Сотрудника")
+    ContainerDb(abs_db, "АБС БД (Oracle)", "Oracle DB", "База клиентов и счетов")
+    Container(abs_adapter, "ABS Adapter", "Java", "Интеграция с Kafka")
+}
+
+' 1. Сценарий Нового клиента
+Rel(new_client, site, "1. Оставить заявку")
+Rel(site, crm, "2. Создание лида (REST)", "HTTPS")
+Rel(front_staff, new_client, "3. Проверка паспорта (в офисе)")
+Rel(front_staff, abs_app, "4. Создание карточки клиента")
+Rel(abs_app, abs_db, "5. Сохранение данных", "SQL")
+
+' 2. Сценарий Действующего клиента
+Rel(auth_client, ib_web, "6. Вход в ИБ")
+Rel(ib_web, ib_backend, "HTTPS")
+Rel(ib_backend, abs_db, "Проверка доступа (Login)", "SQL/Procedure")
+
+' 3. Подача заявки на депозит
+Rel(ib_backend, dep_service, "7. Получение ставок / POST заявки", "REST")
+Rel(dep_service, kafka, "8. Событие: CreateDeposit", "TCP")
+Rel(abs_adapter, kafka, "9. Чтение заявки", "TCP")
+Rel(abs_adapter, abs_db, "10. Запись в очередь на открытие", "JDBC")
+
+@enduml
