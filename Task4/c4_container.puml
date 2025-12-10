@@ -1,0 +1,30 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C4 Container - Реализация обмена ставками
+
+System_Boundary(core, "Банковский контур") {
+
+    Container(dep_app, "Deposit Service", "Java Spring Boot", "Хранит ставки, генерирует отчеты")
+
+    Container_Boundary(infra, "Инфраструктура") {
+        Container(sftp, "SFTP Server", "Linux/OpenSSH", "Директория: /outbox/rates")
+    }
+
+    Container_Boundary(cc_sys, "Внутренний КЦ") {
+        Container(cc_front, "Frontend КЦ", "React", "Виджет 'Тарифы'")
+        Container(cc_back, "Backend КЦ", "Java Spring", "Проксирует запросы")
+    }
+}
+
+System_Ext(partner_sys, "Система Партнера", "Import Script")
+
+' Интеграция Внутреннего КЦ
+Rel(cc_front, cc_back, "GET /rates")
+Rel(cc_back, dep_app, "GET /rates/public", "REST/JSON")
+
+' Интеграция Партнера
+Rel(dep_app, sftp, "1. Generate CSV\n2. Put file", "Scheduled Job")
+Rel(partner_sys, sftp, "3. Get file", "Cron Job")
+
+@enduml

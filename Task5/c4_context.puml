@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C4 Context - Онлайн кредитование
+
+Person(new_client, "Новый Клиент", "Сайт")
+Person(exist_client, "Действующий Клиент", "Интернет-банк")
+Person_Ext(staff, "Сотрудник Отделения", "Идентификация новых клиентов")
+
+System_Boundary(bank, "Банк Стандарт") {
+    System(site, "Сайт", "Витрина кредитов")
+    System(ib, "Интернет-банк", "Личный кабинет")
+
+    System(credit_gw, "Credit Gateway", "API кредитных продуктов (Новая система)")
+
+    System(scoring, "Система Скоринга", "ML Модели и оценка рисков")
+    System(conveyor, "Кредитный конвейер", "BPM Engine (Camunda)")
+    System(abs, "АБС", "Учет кредитов и средств")
+}
+
+System_Ext(bki, "БКИ", "Кредитные истории")
+System_Ext(sms, "СМС-шлюз", "Коды и уведомления")
+
+' Потоки
+Rel(new_client, site, "Заявка на кредит")
+Rel(exist_client, ib, "Заявка по предодобренному")
+
+Rel(site, credit_gw, "POST /application")
+Rel(ib, credit_gw, "GET /offers, POST /application")
+
+Rel(credit_gw, scoring, "Запрос оценки (Real-time)")
+Rel(scoring, bki, "Запрос истории (API)")
+
+Rel(credit_gw, conveyor, "Запуск сложного процесса (если нужно)")
+Rel(credit_gw, abs, "Команда на выдачу (Kafka)")
+
+Rel(staff, abs, "Оформление нового клиента")
+Rel(abs, credit_gw, "Синхронизация статусов")
+Rel(ib, sms, "Код подтверждения")
+
+@enduml

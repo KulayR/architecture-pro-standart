@@ -1,0 +1,51 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C4 Container - Архитектура кредитного модуля
+
+Person(client, "Клиент")
+
+System_Boundary(digital, "Цифровые каналы") {
+    Container(site, "Сайт", "React", "Публичная форма")
+    Container(ib, "Интернет-банк", ".NET", "ДБО")
+}
+
+System_Boundary(credit_domain, "Кредитный домен") {
+    Container(cred_gw, "Credit Gateway Service", "Java Spring Boot", "API, Управление заявками, Витрина предложений")
+    ContainerDb(cred_db, "Credit DB", "PostgreSQL", "Заявки, Кэш предложений")
+
+    Container(conveyor, "Кредитный конвейер", "Camunda BPM", "Сложные процессы оценки рисков")
+    Container(scoring, "Система Скоринга", "Python/Flask", "Расчет рейтинга")
+    Container(kafka, "Kafka Broker", "Apache Kafka", "Topics: LoanApproved, ClientUpdated")
+}
+
+System_Boundary(core, "Ядро банка") {
+    Container(abs_adapter, "ABS Adapter", "Java", "Интеграционный слой")
+    ContainerDb(abs_db, "АБС (Oracle)", "Oracle DB", "Счета и проводки")
+}
+
+System_Ext(bki, "БКИ")
+
+' Взаимодействие Клиента
+Rel(client, site, "Заполняет форму заявки", "HTTPS")
+Rel(client, ib, "Выбирает предодобренный кредит", "HTTPS")
+
+' Онлайн процесс (Сайт/ИБ)
+Rel(site, cred_gw, "REST API", "HTTPS")
+Rel(ib, cred_gw, "REST API", "HTTPS")
+
+Rel(cred_gw, cred_db, "R/W", "JDBC")
+Rel(cred_gw, scoring, "Запрос скоринга (Sync)", "REST")
+Rel(scoring, bki, "Запрос данных", "REST")
+
+' Асинхронная выдача
+Rel(cred_gw, kafka, "Event: LoanApproved", "TCP")
+Rel(abs_adapter, kafka, "Consume: LoanApproved", "TCP")
+Rel(abs_adapter, abs_db, "Открыть счет", "PL/SQL")
+
+' Ночной процесс (Batch) - Предодобренные
+Rel(conveyor, abs_db, "1. Выгрузка клиентов (ночью)", "DB")
+Rel(conveyor, scoring, "2. Массовый скоринг", "REST")
+Rel(conveyor, cred_db, "3. Обновление кэша предложений", "JDBC/REST")
+
+@enduml
